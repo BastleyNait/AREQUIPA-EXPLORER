@@ -1,0 +1,201 @@
+MVVM with Jetpack Compose: Structuring Your App for Clean Architecture
+Hemant Sharma
+Hemant Sharma
+
+Follow
+5 min read
+·
+Oct 19, 2024
+58
+
+
+
+
+As Android developers move towards modernizing their applications, two concepts have become central to building maintainable and scalable apps: the Model-View-ViewModel (MVVM) architecture and Jetpack Compose, Android’s new declarative UI toolkit. These two powerful tools, when used together, can help you build clean, responsive, and well-structured applications.
+
+In this hands-on guide, we’ll explore how to implement the MVVM pattern in a Jetpack Compose project, focusing on separating concerns, managing UI state, and maintaining a clean architecture. By the end, you’ll have a clear understanding of how MVVM works with Compose and how to structure your app for maintainability and scalability.
+
+Press enter or click to view image in full size
+
+Why MVVM?
+MVVM is a widely used architecture pattern that promotes separation of concerns and ensures a clear division between the different layers of your app:
+
+Model: Represents the data and business logic.
+View: Handles the UI and is responsible for displaying the data.
+ViewModel: Acts as the middle layer, managing the app’s UI-related data and business logic, and exposing this data to the View.
+In Jetpack Compose, the View is your composable functions, the ViewModel interacts with this UI, and the Model provides the necessary data. The benefit of this architecture is that it helps decouple your UI logic from your business logic, making your app easier to maintain and test.
+
+Why Jetpack Compose?
+Jetpack Compose, Android’s modern UI toolkit, allows you to build UIs declaratively. It eliminates the need for XML-based layouts and offers a more flexible, dynamic, and concise way of designing user interfaces. When combined with MVVM, Jetpack Compose makes state management more intuitive and seamless.
+
+Let’s get started by building an app with a simple example to showcase how to implement MVVM with Jetpack Compose.
+
+Project Setup
+Before we dive into the implementation, make sure your project is set up with the latest versions of Android Studio and Jetpack Compose. You’ll also need the Hilt library (for dependency injection) and Jetpack ViewModel for managing UI-related data.
+
+dependencies {
+    implementation "androidx.activity:activity-compose:1.6.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1"
+    implementation "androidx.hilt:hilt-navigation-compose:1.0.0"
+    kapt "com.google.dagger:hilt-compiler:2.44"
+}
+Once your project is set up, you’re ready to begin implementing the MVVM architecture in your Jetpack Compose app.
+
+Step 1: Defining the Model
+The Model in MVVM is responsible for holding and managing the data for your application. This could be data retrieved from a remote API, a local database, or simply static data. It also contains business logic and the rules that govern your data.
+
+In our example, we’ll create a UserRepository that will simulate data retrieval.
+
+data class User(val id: Int, val name: String, val email: String)
+
+class UserRepository {
+    // Simulating a network or database call
+    fun getUsers(): List<User> {
+        return listOf(
+            User(1, "John Doe", "john@example.com"),
+            User(2, "Jane Smith", "jane@example.com"),
+            User(3, "Sam Wilson", "sam@example.com")
+        )
+    }
+}
+Step 2: Creating the ViewModel
+The ViewModel is responsible for holding and processing the UI data. It interacts with the Model (in our case, the UserRepository) and exposes the data to the View (i.e., composables).
+
+Get Hemant Sharma’s stories in your inbox
+Join Medium for free to get updates from this writer.
+
+Enter your email
+Subscribe
+We’ll create a UserViewModel that fetches the user data and exposes it as a State in Jetpack Compose.
+
+import androidx.compose.runtime.*
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+
+class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
+
+    // Exposing the list of users as a state
+    private val _users = mutableStateOf<List<User>>(emptyList())
+    val users: State<List<User>> = _users
+
+    init {
+        getUsers()
+    }
+
+    private fun getUsers() {
+        viewModelScope.launch {
+            _users.value = userRepository.getUsers()
+        }
+    }
+}
+In this example, viewModelScope is used to launch coroutines that are tied to the ViewModel’s lifecycle. When the ViewModel is cleared, the coroutines are canceled automatically, preventing memory leaks.
+
+Step 3: Creating the View
+The View is where Jetpack Compose comes into play. Compose allows you to build UIs declaratively by writing composable functions.
+
+We’ll create a UserListScreen composable that will display the list of users. The ViewModel will be used to fetch and display this data.
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+
+@Composable
+fun UserListScreen(userViewModel: UserViewModel = hiltViewModel()) {
+    val users = userViewModel.users.value
+
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("User List") })
+        },
+        content = {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                users.forEach { user ->
+                    UserCard(user)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun UserCard(user: User) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Name: ${user.name}", style = MaterialTheme.typography.h6)
+            Text(text = "Email: ${user.email}", style = MaterialTheme.typography.body1)
+        }
+    }
+}
+In this example:
+
+The UserListScreen composable fetches the user data from the UserViewModel.
+The UI is reactive; when the state of users in the ViewModel changes, the composable automatically recomposes and updates the UI.
+Step 4: Wiring it All Together with Dependency Injection
+To make our code more maintainable and testable, we’ll use Hilt for dependency injection. This ensures that our UserRepository and UserViewModel are provided automatically, without needing manual instantiation.
+
+Add Hilt annotations to your UserRepository and UserViewModel:
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+@HiltViewModel
+class UserViewModel @Inject constructor(
+    private val userRepository: UserRepository
+) : ViewModel() {
+    // ViewModel code here...
+}
+
+class UserRepository @Inject constructor() {
+    // Repository code here...
+}
+2. Add the @HiltAndroidApp annotation to your Application class:
+
+import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class MyApp : Application()
+This setup ensures that Hilt will provide the necessary dependencies, including the UserRepository and UserViewModel.
+
+Step 5: Handling UI State
+One of the key benefits of using Jetpack Compose with MVVM is the simplified UI state management. The state in Jetpack Compose is declarative, meaning the UI automatically reacts to changes in the state.
+
+In our example, we’ve used mutableStateOf to hold the list of users in the ViewModel. This ensures that whenever the state changes, the UI is recomposed to reflect the new data.
+
+For more complex states, you can use Jetpack Compose’s State and remember APIs to preserve UI state across recompositions, or use rememberSaveable to retain the state even across configuration changes.
+
+For example, you can handle loading and error states using additional State variables:
+
+private val _loading = mutableStateOf(false)
+val loading: State<Boolean> = _loading
+
+private val _error = mutableStateOf<String?>(null)
+val error: State<String?> = _error
+
+private fun getUsers() {
+    viewModelScope.launch {
+        _loading.value = true
+        try {
+            _users.value = userRepository.getUsers()
+        } catch (e: Exception) {
+            _error.value = "Failed to load users"
+        } finally {
+            _loading.value = false
+        }
+    }
+}
+Conclusion
+The combination of MVVM and Jetpack Compose offers a powerful, modern approach to structuring your Android apps. The clear separation of concerns provided by MVVM ensures that your app’s logic is decoupled from its UI, while Jetpack Compose makes it easier to manage state and build dynamic UIs declaratively.
+
+By applying this pattern, you create a more maintainable, testable, and scalable app. With the added benefits of Jetpack Compose, you can also reduce boilerplate code and improve UI responsiveness.
+
+If you’re building Android apps with Jetpack Compose, using MVVM ensures that you’re following best practices for clean architecture and modern app development. Happy coding. Sayonara :)
